@@ -1,5 +1,5 @@
 # BLE_log_data_extractor
-SCRIPT_VERSION = '1.0'
+SCRIPT_VERSION = '1.1'
 
 import os
 import aux_lib.common_BLE_aux_lib as common_BLE_aux_lib
@@ -15,8 +15,7 @@ LOG_FOLDER = BASE_PATH + 'scan_log_2/'
 RESULT_PATH = BASE_PATH + 'log_data_extractor_res.txt'
 
 
-##PHRASE_TO_FIND = "\\x01\\x04"
-PHRASE_TO_FIND = "C8:37:CF"
+PHRASE_TO_FIND = r"\x01\t \x02;\xba$N\xecUd(m\xe0\x0f(\xe4\n\xd7u\xadD\xae\\FJ\xf0"
 
 
 #================================================================================================================
@@ -51,7 +50,7 @@ for log_file_path in log_file_path_list:
     i = 0
     for line in lines_list:
         if PHRASE_TO_FIND in line:
-            print_res('[' + str(i) + '] ' + line)
+            print_res('[' + str(i + 1) + '] ' + line)
             i += 1
     print_res('\n' * 2)
 
