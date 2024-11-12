@@ -1,8 +1,9 @@
-# BLE_adv_dtata_converter
-SCRIPT_VERSION = '1.6'
+# ESP32_BLE_adv_dtata_converter
+SCRIPT_VERSION = '1.2'
 
 
 import os
+import datetime
 import aux_lib.common_BLE_aux_lib as common_BLE_aux_lib
 
 
@@ -11,54 +12,10 @@ BASE_PATH = './'
 LOG_FOLDER = BASE_PATH + 'scan_log_1/'
 
 
+START_DATETIME_OBJ = datetime.datetime.strptime('08.11.2024 05:53', '%d.%m.%Y %H:%M')
+
+
 #=================================================================================================================================
-
-
-# dane z nowego BLE scannera (czarna ikonka - Thingsup)
-def NEW_BLE_scanner_adv_data_convert(raw_data):
-    raw_data = raw_data.strip()
-    print('\n--------------------------------------------------------------------------------')
-    print('NEW_BLE_scanner_adv_data_convert')
-    print('raw_data = ' + raw_data)
-    print('len(raw_data) = ' + str(len(raw_data)))
-    print('\n')
-    md_data_len_in_bytes = int(raw_data[0:2], 16) - 3
-    print('md_data_len_in_bytes = ' + str(md_data_len_in_bytes))
-    if md_data_len_in_bytes <= 0:
-        return ['manufacturer_data={' + str(raw_data)]
-    idx00 = raw_data.index('00')
-    print('idx00 = ' + str(idx00))
-    try:
-        idx000 = raw_data.index('000')
-        if idx00 == idx000:
-            print('PROBLEM: idx00 == idx000')
-    except:
-        pass
-    if idx00 == 6:
-        idx00 = 4
-    md_id = int(raw_data[2:idx00], 16)
-
-    int_list = []
-    i = idx00 + 2
-    try:
-        while i < 2 * md_data_len_in_bytes + idx00 + 2:
-            e = raw_data[i]
-            e += raw_data[i + 1]
-            i += 2
-            int_list.append(int(e, 16))
-        md_val_tx = 'manufacturer_data={' + str(md_id) + ': ' + str(bytes(bytearray(int_list))) + '}'
-        print(md_val_tx)
-        tmp_res = old_BLE_scanner_adv_data_convert(raw_data[i:], False)
-        return [md_val_tx] + tmp_res
-    except:
-        print('NEW_BLE_scanner_adv_data_convert: ERROR no 1')
-    try:
-        tmp_res = old_BLE_scanner_adv_data_convert(raw_data, True)
-        print(str(tmp_res))
-        return tmp_res
-    except:
-        print('NEW_BLE_scanner_adv_data_convert: ERROR no 2')
-        return ['NEW_BLE_scanner_adv_data_convert: ERROR']
 
 
 # dane ze starego BLE scannera (niebieskia ikonka - Bluepixel Technologies)
@@ -122,24 +79,22 @@ def old_BLE_scanner_adv_data_convert(raw_data, verbose = True):
 def line_convert(line_tx):
     data_input_list = line_tx.split(',')
     a = data_input_list[-1]
-##    res_list = old_BLE_scanner_adv_data_convert(a)
-    res_list = NEW_BLE_scanner_adv_data_convert(a)
+    res_list = old_BLE_scanner_adv_data_convert(a)
     advertisement_data_str = ', '.join(res_list)
 ##    print('advertisement_data_str = ' + advertisement_data_str)
-    device_name = str(data_input_list[2])
-    if not device_name.strip():
-        device_name = '-'
+    device_name = '-'
     known_name = '-'
-    mac_address = data_input_list[3]
+    mac_address = data_input_list[0].split('->')[-1].strip()
     mac_address_type = common_BLE_aux_lib.get_mac_address_type(mac_address)
-    rssi = int(data_input_list[4])
+    rssi = int(data_input_list[1])
     if mac_address in list(common_BLE_aux_lib.DEV_ADDRESS_MAP.keys()):
         known_name = ':' + common_BLE_aux_lib.DEV_ADDRESS_MAP[mac_address] + ':'
     else:
         known_name = common_BLE_aux_lib.get_known_name_from_advertisement_data_match(advertisement_data_str)
     advertisement_data_str = common_BLE_aux_lib.add_uuid_description_to_advertisement_data_str(advertisement_data_str)
-##    result_line = data_input_list[0] + ') ' + data_input_list[1] + ' -> ' + mac_address + ', ' + mac_address_type + ', ' + str(rssi) + ', ' + device_name + ', ' + known_name + ', ' + advertisement_data_str
-    result_line = data_input_list[1] + ' -> ' + mac_address + ', ' + mac_address_type + ', ' + device_name + ', ' + known_name + ', ' + advertisement_data_str
+    time_sec = int(data_input_list[0].split(')')[0].strip())
+    datetime_str = str(START_DATETIME_OBJ + datetime.timedelta(seconds=time_sec))
+    result_line = datetime_str + ' -> ' + mac_address + ', ' + mac_address_type + ', ' + device_name + ', ' + known_name + ', ' + advertisement_data_str
     return result_line
 
 
@@ -157,17 +112,11 @@ for log_file_path in log_file_path_list:
     res_list = []
     i = 0
     for line in lines_list:
-        if i > 0:
-            res_list.append(line_convert(line))
-        i += 1
-    
-    res_set = set(res_list)
-    res_list = []
-    i = 0
-    for res in res_set:
-        res_list.append(str(i + 1) + ') ' + res)
-        i += 1
-    
+        line = line.strip()
+        if line and '->' in line:
+            res_list.append(str(i + 1) + ') -> ' + line_convert(line))
+            i += 1
+
     f = open(log_file_path.replace('.csv', '.txt'), 'w')
     f.write('\n'.join(res_list))
     f.close()

@@ -1,5 +1,5 @@
 # BLE_log_analyser
-SCRIPT_VERSION = '1.9'
+SCRIPT_VERSION = '1.10'
 
 import os
 import aux_lib.common_BLE_aux_lib as common_BLE_aux_lib
@@ -62,7 +62,7 @@ def get_field_set_from_BLE_scanner_logs(root_folder, extension):
         lines_list = f.readlines()
         f.close()
         for line in lines_list:
-            field_list = [s.strip() for s in line.split(', ')]
+            field_list = [s.split('=>')[0].strip() for s in line.split(', ')]
             res_list += field_list
     return list(set(res_list))
 

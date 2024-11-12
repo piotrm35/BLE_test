@@ -1,5 +1,5 @@
 # BLE_test
-SCRIPT_VERSION = '2.0'
+SCRIPT_VERSION = '2.1'
 
 
 import os
@@ -19,7 +19,7 @@ BASE_PATH = './'
 
 
 devices_dict = {}
-first_dev_log_time_list = []
+first_dev_log_dict = {}
 first_dev_log_idx = 1
 total_number_logs_dict = {}
 FIRST_DEV_LOG_MAX_DELAY = 7
@@ -43,7 +43,14 @@ def simple_callback(device: BLEDevice, advertisement_data: AdvertisementData):
     else:
         known_name = common_BLE_aux_lib.get_known_name_from_advertisement_data_match(advertisement_data_str)
     advertisement_data_str = common_BLE_aux_lib.add_uuid_description_to_advertisement_data_str(advertisement_data_str)
-    if device.address not in first_dev_log_time_list:
+    do_log = False
+    if device.address not in first_dev_log_dict.keys():
+        first_dev_log_dict[device.address] = [advertisement_data_str]
+        do_log = True
+    elif advertisement_data_str not in first_dev_log_dict[device.address] and len(first_dev_log_dict[device.address]) <= MAX_UNIQUE_KEY_IDX:
+        first_dev_log_dict[device.address].append(advertisement_data_str)
+        do_log = True
+    if do_log:  
         f = open(FIRST_DEV_LOG_TIME_FILE_PATH, 'a')
         f.write(
                 str(first_dev_log_idx) + ') ' +
@@ -58,9 +65,7 @@ def simple_callback(device: BLEDevice, advertisement_data: AdvertisementData):
             )
         f.close()
         first_dev_log_idx += 1
-        first_dev_log_time_list.append(device.address)
-    total_number_logs_dict_keys = list(total_number_logs_dict.keys())
-    if device.address not in total_number_logs_dict_keys:
+    if device.address not in total_number_logs_dict.keys():
         total_number_logs_dict[device.address] = {
                 'max_RSSI': device.rssi,
                 'first_log_datatime': common_BLE_aux_lib.get_current_datetime_str(),
@@ -81,11 +86,9 @@ def simple_callback(device: BLEDevice, advertisement_data: AdvertisementData):
         total_number_logs_dict[device.address]['last_log_datetime'] = common_BLE_aux_lib.get_current_datetime_str()
         stored_advertisement_data_dict = common_BLE_aux_lib.get_advertisement_data_dict(total_number_logs_dict[device.address]['advertisement_data'])
         stored_advertisement_data_dict_keys = list(stored_advertisement_data_dict.keys())
-        stored_advertisement_data_dict_values = list(stored_advertisement_data_dict.values())
         new_advertisement_data_dict = common_BLE_aux_lib.get_advertisement_data_dict(advertisement_data_str)
-        new_advertisement_data_dict_keys = list(new_advertisement_data_dict.keys())
-        for new_advertisement_data_dict_key in new_advertisement_data_dict_keys:
-            if new_advertisement_data_dict[new_advertisement_data_dict_key] not in stored_advertisement_data_dict_values:
+        for new_advertisement_data_dict_key in new_advertisement_data_dict.keys():
+            if new_advertisement_data_dict[new_advertisement_data_dict_key] not in stored_advertisement_data_dict.values():
                 unique_key_idx = get_unique_key_idx_in_list(new_advertisement_data_dict_key, stored_advertisement_data_dict_keys)
                 if unique_key_idx <= MAX_UNIQUE_KEY_IDX:
                     if unique_key_idx == 0:
